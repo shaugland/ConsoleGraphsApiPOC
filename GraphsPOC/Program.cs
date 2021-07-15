@@ -4,6 +4,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Graph;
 using System;
 using System.Collections.Generic;
+using Microsoft.Identity.Client;
+using System.ServiceModel;
+using Microsoft.Graph.Auth;
 
 namespace GraphsPOC
 {
@@ -11,6 +14,8 @@ namespace GraphsPOC
     {
         static IConfigurationRoot LoadAppSettings()
         {
+            // dotnet user-secrets set <appId/scopes> <value>
+            // to set settings
             var appConfig = new ConfigurationBuilder()
                 .AddUserSecrets<Program>()
                 .Build();
@@ -46,24 +51,32 @@ namespace GraphsPOC
                 return;
             }
 
+            var clientSecret = "CLIENT-SECRET";
+
             var appId = appConfig["appId"];
             var scopesString = appConfig["scopes"];
             var scopes = scopesString.Split(';');
 
             // Initialize the auth provider with values from appsettings.json
-            var authProvider = new DeviceCodeAuthProvider(appId, scopes);
+            IConfidentialClientApplication app;
+            app = ConfidentialClientApplicationBuilder
+                .Create(appConfig["appId"])
+                .WithClientSecret(clientSecret)
+                .WithTenantId("TENANT-ID")
+                .Build();
 
+            ClientCredentialProvider authProvider = new ClientCredentialProvider(app);
             // Request a token to sign in the user
-            var accessToken = authProvider.GetAccessToken().Result;
+            //var accessToken = authProvider.GetAccessToken().Result;
 
-            Console.WriteLine($"Access token: {accessToken}\n");
+            //Console.WriteLine($"Access token: {accessToken}\n");
 
             // Initialize Graph client
             GraphHelper.Initialize(authProvider);
 
             // Get signed in user
-            var user = GraphHelper.GetMeAsync().Result;
-            Console.WriteLine($"Welcome {user.DisplayName}!\n");
+            //var user = GraphHelper.GetMeAsync().Result;
+            //Console.WriteLine($"Welcome {user.DisplayName}!\n");
 
             GraphServiceClient graphClient = new GraphServiceClient(authProvider);
 
@@ -95,8 +108,8 @@ namespace GraphsPOC
                     {
                         EmailAddress = new EmailAddress
                         {
-                            Address = "shauglan_stu@kent.edu",
-                            Name = "Seth Haugland"
+                            Address = "EMAIL ADDRESS",
+                            Name = "EMAIL"
                         },
                         Type = AttendeeType.Required
                     }
@@ -105,9 +118,8 @@ namespace GraphsPOC
                     OnlineMeetingProvider = OnlineMeetingProviderType.TeamsForBusiness
             };
 
-            var something = graphClient.Me.Calendar.Events
-                .Request()
-                .AddAsync(@event).Result;
+
+            var e = graphClient.Users["EXCHANGE-ACCOUNT"].Events.Request().AddAsync(@event).Result;
 
             Console.WriteLine("Event should now be scheduled");
         }
